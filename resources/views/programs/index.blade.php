@@ -30,7 +30,6 @@
         </div>
 
         <div class="group relative bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/60 ring-1 ring-black/5 flex flex-col lg:flex-row min-h-[500px] transition-all duration-500 hover:shadow-red-900/5">
-
             <div class="relative w-full lg:w-2/5 overflow-hidden min-h-[300px] lg:min-h-full">
                 <img src="https://www.oauh.cz/content/subjects/6.jpg"
                      alt="Ekonomicko-právní činnost"
@@ -40,7 +39,7 @@
 
                 <div class="absolute top-6 left-6 flex flex-wrap gap-2">
                     <span class="px-4 py-1.5 bg-white/95 backdrop-blur-md text-sm font-bold text-school-primary rounded-lg shadow-md border border-white/20">
-                        Denní forma
+                        Prezenční forma
                     </span>
                     <span class="px-4 py-1.5 bg-gray-900/90 backdrop-blur-md text-sm font-bold text-white rounded-lg shadow-md border border-white/10">
                         3 roky
@@ -97,12 +96,12 @@
                 <div class="flex flex-col sm:flex-row items-center gap-4 mt-auto">
                     <a href="{{ route('login') }}" class="group/btn relative w-full sm:w-auto flex-grow flex items-center justify-center px-8 py-4 rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer">
                         <div class="absolute inset-0 topo-bg opacity-50 transition-opacity duration-300"></div>
-                        <div class="absolute inset-0 bg-white/60 backdrop-blur-[2px] group-hover:backdrop-blur-[4px] transition-all duration-300"></div>
+                        <div class="absolute inset-0 bg-white/60 backdrop-blur-[2px] group-hover/btn:backdrop-blur-[4px] transition-all duration-300"></div>
                         <div class="absolute inset-0 rounded-xl border border-white/60 border-b-4 border-b-gray-200/50"></div>
 
                         <span class="relative z-10 text-gray-900 font-bold text-lg flex items-center drop-shadow-sm">
                             Podat přihlášku na tento obor
-                            <svg xmlns="http://www.w3.org/2000/svg" class="ml-3 h-5 w-5 text-gray-600 group-hover:text-school-primary transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="ml-3 h-5 w-5 text-gray-600 group-hover/btn:text-school-primary transition-transform duration-300 group-hover/btn:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
                         </span>
