@@ -1,0 +1,93 @@
+@extends('layouts.application')
+
+@section('form-content')
+    <form action="{{ route('application.storeStep3', $application->id) }}" method="POST" enctype="multipart/form-data">
+        @csrf
+
+        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Specifické potřeby</h2>
+                <p class="text-sm text-gray-500 mt-1">Uveďte, pokud vyžadujete specifický přístup (např. zdravotní
+                    znevýhodnění, poruchy učení).</p>
+            </div>
+
+            <div class="relative">
+                <textarea name="specific_needs" rows="3" placeholder="Zde popište své požadavky..."
+                    class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 px-4 transition-all">{{ old('specific_needs', $application->details->specific_needs) }}</textarea>
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Poznámka k přihlášce</h2>
+            <p class="text-sm text-gray-500 mb-4">Prostor pro jakékoliv další informace, které nám chcete sdělit.</p>
+
+            <div class="relative">
+                <textarea name="note" rows="3" placeholder="Vaše poznámka..."
+                    class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 px-4 transition-all">{{ old('note', $application->details->note) }}</textarea>
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Další přílohy</h2>
+            <p class="text-sm text-gray-500 mb-6">Zde můžete nahrát další dokumenty (např. certifikáty, potvrzení od
+                lékaře).</p>
+
+            <div class="relative group cursor-pointer">
+                <input type="file" name="other_file" id="other_file"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+
+                <div
+                    class="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center transition-all group-hover:border-school-primary group-hover:bg-red-50/30 flex flex-col items-center justify-center">
+                    <div
+                        class="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-white text-gray-400 group-hover:text-school-primary transition-colors">
+                        <span class="material-symbols-rounded text-[24px]">cloud_upload</span>
+                    </div>
+                    <p class="text-sm font-bold text-gray-700 group-hover:text-school-primary transition-colors">
+                        Klikněte pro výběr souboru nebo jej přetáhněte sem
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1">
+                        Maximální velikost 10 MB.
+                    </p>
+                    @if ($application->details->other_file_path)
+                        <div
+                            class="mt-4 flex items-center gap-2 text-sm text-green-600 font-bold bg-green-50 px-3 py-1 rounded-lg">
+                            <span class="material-symbols-rounded text-[18px]">check</span>
+                            Soubor již byl nahrán
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-4 ring-1 ring-black/5">
+            <div class="flex justify-between items-center">
+
+                <a href="{{ route('application.step2', $application->id) }}"
+                    class="group relative flex items-center justify-center px-6 py-3 rounded-xl overflow-hidden transition-all duration-300 hover:bg-gray-100">
+                    <span
+                        class="relative z-10 text-gray-600 font-bold text-sm flex items-center group-hover:text-gray-900 transition-colors">
+                        <span
+                            class="material-symbols-rounded mr-2 text-[18px] transition-transform duration-300 group-hover:-translate-x-1">arrow_back</span>
+                        Zpět na vzdělání
+                    </span>
+                </a>
+
+                <button type="submit"
+                    class="group relative flex items-center justify-center px-8 py-4 rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer">
+                    <div class="absolute inset-0 topo-bg opacity-50 transition-opacity duration-300"></div>
+                    <div
+                        class="absolute inset-0 bg-white/60 backdrop-blur-[2px] group-hover:backdrop-blur-[4px] transition-all duration-300">
+                    </div>
+                    <div class="absolute inset-0 rounded-xl border border-white/60 border-b-4 border-b-gray-200/50"></div>
+
+                    <span class="relative z-10 text-gray-900 font-bold text-lg flex items-center drop-shadow-sm">
+                        Přejít na souhrn
+                        <span
+                            class="material-symbols-rounded ml-3 text-[20px] text-gray-600 group-hover:text-school-primary transition-transform duration-300 group-hover:translate-x-1">arrow_forward</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+
+    </form>
+@endsection
