@@ -12,4 +12,14 @@ class Application extends Model
     {
         return $this->hasOne(ApplicantDetail::class);
     }
+
+    public function studyProgram()
+    {
+        return $this->belongsTo(StudyProgram::class);
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(ApplicationAttachment::class);
+    }
 }

@@ -32,30 +32,39 @@
             <p class="text-sm text-gray-500 mb-6">Zde můžete nahrát další dokumenty (např. certifikáty, potvrzení od
                 lékaře).</p>
 
-            <div class="relative group cursor-pointer">
-                <input type="file" name="other_file" id="other_file"
+            <div class="relative group cursor-pointer mb-4">
+                <input type="file" name="other_files[]" multiple
                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-
                 <div
                     class="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center transition-all group-hover:border-school-primary group-hover:bg-red-50/30 flex flex-col items-center justify-center">
                     <div
                         class="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-white text-gray-400 group-hover:text-school-primary transition-colors">
-                        <span class="material-symbols-rounded text-[24px]">cloud_upload</span>
+                        <span class="material-symbols-rounded text-[24px]">library_add</span>
                     </div>
                     <p class="text-sm font-bold text-gray-700 group-hover:text-school-primary transition-colors">
-                        Klikněte pro výběr souboru nebo jej přetáhněte sem
+                        Nahrát další soubory (více najednou)
                     </p>
-                    <p class="text-xs text-gray-400 mt-1">
-                        Maximální velikost 10 MB.
-                    </p>
-                    @if ($application->details->other_file_path)
-                        <div
-                            class="mt-4 flex items-center gap-2 text-sm text-green-600 font-bold bg-green-50 px-3 py-1 rounded-lg">
-                            <span class="material-symbols-rounded text-[18px]">check</span>
-                            Soubor již byl nahrán
-                        </div>
-                    @endif
                 </div>
+            </div>
+
+            <div class="space-y-2">
+                @foreach ($application->attachments->where('type', 'other') as $file)
+                    <div class="flex items-center justify-between p-3 bg-white/60 border border-gray-200 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-rounded text-gray-400">attach_file</span>
+                            <span class="text-sm font-bold text-gray-700">{{ $file->filename }}</span>
+                        </div>
+                        <button form="delete-file-{{ $file->id }}"
+                            class="text-gray-400 hover:text-red-500 transition-colors">
+                            <span class="material-symbols-rounded">delete</span>
+                        </button>
+                    </div>
+                    <form id="delete-file-{{ $file->id }}"
+                        action="{{ route('application.deleteAttachment', ['id' => $application->id, 'attachmentId' => $file->id]) }}"
+                        method="POST" class="hidden">
+                        @csrf @method('DELETE')
+                    </form>
+                @endforeach
             </div>
         </div>
 

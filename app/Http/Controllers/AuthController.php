@@ -17,27 +17,59 @@ class AuthController extends Controller
 
     public function handleEmail(Request $request) {
         $request->validate(['email' => 'required|email']);
-
         $email = $request->input('email');
 
-        $user = User::firstOrCreate(
-            ['email' => $email],
-            ['name' => strstr($email, '@', true)]
-        );
+        $user = User::where('email', $email)->first();
 
-        $ticketToken = Str::random(32);
+        if ($user && $user->password) {
+            return view('auth.password-login', ['email' => $email]);
+        }
 
+        if (!$user) {
+            $user = User::create([
+                'email' => $email,
+                'name' => strstr($email, '@', true),
+            ]);
+        }
+
+        $this->sendLoginTicket($user);
+        return view('auth.check-email', ['email' => $email]);
+    }
+
+    private function sendLoginTicket(User $user) {
+        $token = Str::random(32);
         LoginTicket::create([
             'user_id' => $user->id,
-            'token' => $ticketToken,
+            'token' => $token,
             'expires_at' => now()->addMinutes(30),
         ]);
 
-        $link = route('auth.verify', ['loginTicket' => $ticketToken]);
+        $link = route('auth.verify', ['loginTicket' => $token]);
+        Log::info("LOGIN LINK FOR {$user->email}: {$link}");
+    }
 
-        Log::info("LOGIN LINK FOR {$email}: {$link}");
+    public function sendLink(Request $request) {
+        $request->validate(['email' => 'required|email']);
+        $user = User::where('email', $request->email)->firstOrFail();
 
-        return view('auth.check-email', ['email' => $email]);
+        $this->sendLoginTicket($user);
+        return view('auth.check-email', ['email' => $user->email]);
+    }
+
+    public function loginWithPassword(Request $request) {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required'
+        ]);
+
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+            return redirect()->intended('dashboard');
+        }
+
+        return back()->withErrors([
+            'password' => 'Zadané heslo není správné.',
+        ]);
     }
 
     public function verifyTicket(Request $request) {
@@ -58,10 +90,6 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard');
-    }
-
-    public function loginWithPassword(Request $request) {
         return redirect()->route('dashboard');
     }
 

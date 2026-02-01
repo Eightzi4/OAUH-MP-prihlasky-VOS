@@ -5,7 +5,7 @@
         @csrf
 
         <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-6">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Základní údaje</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Identifikační údaje</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -18,9 +18,12 @@
                             <span class="material-symbols-rounded text-gray-400 text-[20px]">person</span>
                         </div>
                         <input type="text" name="first_name"
-                            value="{{ old('first_name', $application->details->first_name ?? Auth::user()->name) }}"
+                            value="{{ old('first_name', $application->details->first_name) }}" placeholder="Jan"
                             class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
                     </div>
+                    @error('first_name')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
@@ -32,12 +35,141 @@
                             <span class="material-symbols-rounded text-gray-400 text-[20px]">badge</span>
                         </div>
                         <input type="text" name="last_name"
-                            value="{{ old('last_name', $application->details->last_name) }}"
+                            value="{{ old('last_name', $application->details->last_name) }}" placeholder="Novák"
                             class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
                     </div>
+                    @error('last_name')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
-                <div class="md:col-span-2">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                        Pohlaví *
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-rounded text-gray-400 text-[20px]">wc</span>
+                        </div>
+                        <select name="gender"
+                            class="w-full appearance-none rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 py-3 pl-10 pr-10 transition-all">
+                            <option value="" disabled selected>Vyberte pohlaví</option>
+                            <option value="Muž"
+                                {{ old('gender', $application->details->gender) == 'Muž' ? 'selected' : '' }}>Muž</option>
+                            <option value="Žena"
+                                {{ old('gender', $application->details->gender) == 'Žena' ? 'selected' : '' }}>Žena</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <span class="material-symbols-rounded text-gray-500">expand_more</span>
+                        </div>
+                    </div>
+                    @error('gender')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                        Rodné číslo *
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-rounded text-gray-400 text-[20px]">fingerprint</span>
+                        </div>
+                        <input type="text" name="birth_number"
+                            value="{{ old('birth_number', $application->details->birth_number) }}" placeholder="000101/1234"
+                            class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
+                    </div>
+                    @error('birth_number')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Narození a občanství</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                        Datum narození *
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-rounded text-gray-400 text-[20px]">calendar_today</span>
+                        </div>
+                        <input type="date" name="birth_date"
+                            value="{{ old('birth_date', $application->details->birth_date ? $application->details->birth_date->format('Y-m-d') : '') }}"
+                            class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
+                    </div>
+                    @error('birth_date')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                        Místo narození *
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-rounded text-gray-400 text-[20px]">location_on</span>
+                        </div>
+                        <input type="text" name="birth_city"
+                            value="{{ old('birth_city', $application->details->birth_city) }}"
+                            placeholder="Uherské Hradiště"
+                            class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
+                    </div>
+                    @error('birth_city')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Státní
+                        občanství</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="material-symbols-rounded text-gray-400 text-[20px]">flag</span>
+                        </div>
+                        <select name="citizenship"
+                            class="w-full appearance-none rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 py-3 pl-10 pr-10 transition-all">
+                            <option value="" disabled selected>Vyberte občanství
+                            </option>
+                            <option value="Česká republika"
+                                {{ old('citizenship', $application->details->citizenship) == 'Česká republika' ? 'selected' : '' }}>
+                                Česká republika</option>
+                            <option value="Slovensko"
+                                {{ old('citizenship', $application->details->citizenship) == 'Slovensko' ? 'selected' : '' }}>
+                                Slovensko</option>
+                            <option value="Ukrajina"
+                                {{ old('citizenship', $application->details->citizenship) == 'Ukrajina' ? 'selected' : '' }}>
+                                Ukrajina</option>
+                            <option value="Jiné"
+                                {{ old('citizenship', $application->details->citizenship) == 'Jiné' ? 'selected' : '' }}>Jiné
+                            </option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <span class="material-symbols-rounded text-gray-500">expand_more</span>
+                        </div>
+                    </div>
+                    @error('citizenship')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Kontaktní údaje</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
                         E-mail
                     </label>
@@ -45,16 +177,14 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span class="material-symbols-rounded text-gray-400 text-[20px]">alternate_email</span>
                         </div>
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
-                            <span class="material-symbols-rounded text-[20px]">help</span>
-                        </div>
                         <input type="email" name="email"
                             value="{{ old('email', $application->details->email ?? Auth::user()->email) }}"
                             placeholder="jan.novak@example.com"
-                            class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-gray-50 placeholder-gray-400 py-3 pl-10 pr-10 transition-all cursor-not-allowed"
-                            readonly>
+                            class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-10 transition-all">
                     </div>
-                    <p class="text-xs text-gray-400 mt-1 ml-1">Emailová adresa použitá pro korespondenci s Vámi.</p>
+                    @error('email')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
@@ -69,33 +199,16 @@
                             placeholder="+420 777 123 456"
                             class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                        Státní občanství
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span class="material-symbols-rounded text-gray-400 text-[20px]">flag</span>
-                        </div>
-                        <select name="citizenship"
-                            class="w-full appearance-none rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 py-3 pl-10 pr-10 transition-all">
-                            <option value="Česká republika" selected>Česká republika</option>
-                            <option value="Slovensko">Slovensko</option>
-                            <option value="Jiné">Jiné</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <span class="material-symbols-rounded text-gray-500">expand_more</span>
-                        </div>
-                    </div>
+                    @error('phone')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
             </div>
         </div>
 
         <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Adresa místa pobytu</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Adresa trvalého bydliště</h2>
 
             <div class="grid grid-cols-1 gap-6">
 
@@ -111,8 +224,10 @@
                             placeholder="Masarykovo náměstí 123"
                             class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
                     </div>
+                    @error('street')
+                        <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                    @enderror
                 </div>
-
 
                 <div class="grid grid-cols-3 gap-6">
                     <div class="col-span-2">
@@ -127,6 +242,9 @@
                                 placeholder="Uherské Hradiště"
                                 class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
                         </div>
+                        @error('city')
+                            <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div>
@@ -141,13 +259,17 @@
                                 placeholder="686 01"
                                 class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 placeholder-gray-400 py-3 pl-10 pr-4 transition-all">
                         </div>
+                        @error('zip')
+                            <p class="text-red-500 text-xs mt-1 ml-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
 
             </div>
         </div>
 
-        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-4 mt-8 ring-1 ring-black/5">
+        <div
+            class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-4 mt-8 ring-1 ring-black/5">
             <div class="flex justify-between items-center">
 
                 <a href="{{ route('dashboard') }}"

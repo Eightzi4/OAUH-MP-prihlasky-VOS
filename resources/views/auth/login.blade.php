@@ -36,7 +36,9 @@
             @csrf
 
             <div>
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-mailová adresa</label>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    E-mailová adresa
+                </label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <span class="material-symbols-rounded text-gray-400 text-[20px]">alternate_email</span>
