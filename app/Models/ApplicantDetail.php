@@ -10,5 +10,7 @@ class ApplicantDetail extends Model
 
     protected $casts = [
         'birth_date' => 'date',
+        'nia_data' => 'array',
+        'verified_fields' => 'array',
     ];
 }

@@ -24,17 +24,19 @@ return new class extends Migration
 
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
-            $table->string('email')->nullable();
-            $table->string('phone')->nullable();
             $table->string('gender')->nullable();
             $table->string('birth_number')->nullable();
             $table->date('birth_date')->nullable();
             $table->string('birth_city')->nullable();
             $table->string('citizenship')->nullable();
 
+            $table->string('email')->nullable();
+            $table->string('phone')->nullable();
+
             $table->string('street')->nullable();
             $table->string('city')->nullable();
             $table->string('zip')->nullable();
+            $table->string('country')->nullable();
 
             $table->string('previous_school')->nullable();
             $table->string('izo')->nullable();
@@ -46,7 +48,9 @@ return new class extends Migration
 
             $table->text('specific_needs')->nullable();
             $table->text('note')->nullable();
-            $table->string('other_file_path')->nullable();
+
+            $table->json('nia_data')->nullable();
+            $table->json('verified_fields')->nullable();
 
             $table->timestamps();
         });

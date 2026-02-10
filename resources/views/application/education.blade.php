@@ -163,58 +163,104 @@
             </div>
         </div>
 
-        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-8">
+        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-8 ring-1 ring-black/5 mb-8"
+            x-data="fileUploader({ maxAttachments: 1 })">
+
             <h2 class="text-2xl font-bold text-gray-900 mb-2">Maturitní vysvědčení</h2>
-            <p class="text-sm text-gray-500 mb-6">Nahrajte sken maturitního vysvědčení (PDF, JPG, PNG). Pokud ještě nemáte
-                odmaturováno, můžete nahrát později.</p>
+            <p class="text-sm text-gray-500 mb-6">Nahrajte sken maturitního vysvědčení (PDF, JPG, PNG).</p>
 
-            <div class="relative group cursor-pointer">
-                <input type="file" name="maturita_file" id="maturita_file"
-                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="updateFileName(this)">
+            <div class="relative group cursor-pointer transition-all duration-300"
+                x-show="selectedFiles.length === 0 @if ($maturitaFile) && false @endif"
+                x-bind:class="{ 'bg-red-50/50 border-school-primary ring-2 ring-school-primary/20': isDragging, 'hover:border-school-primary hover:bg-red-50/30':
+                        !isDragging }"
+                @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
+                @drop.prevent="isDragging = false; handleFiles($event.dataTransfer.files)" @click="$refs.fileInput.click()">
 
-                <div
-                    class="border-2 border-dashed rounded-2xl p-8 text-center transition-all group-hover:border-school-primary group-hover:bg-red-50/30 flex flex-col items-center justify-center @error('maturita_file') border-red-500 bg-red-50/10 @else border-gray-300 @enderror">
-                    <div
-                        class="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-white text-gray-400 group-hover:text-school-primary transition-colors">
+                <input type="file" name="maturita_file" x-ref="fileInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png"
+                    @change="handleFiles($event.target.files)">
+
+                <div class="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center flex flex-col items-center justify-center transition-colors"
+                    x-bind:class="{ 'border-transparent': isDragging }">
+
+                    <div class="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-400 transition-colors"
+                        x-bind:class="{ 'bg-white text-school-primary': isDragging }">
                         <span class="material-symbols-rounded text-[24px]">cloud_upload</span>
                     </div>
-                    <p id="upload-text"
-                        class="text-sm font-bold text-gray-700 group-hover:text-school-primary transition-colors">
-                        Klikněte pro výběr souboru nebo jej přetáhněte sem
+
+                    <p class="text-sm font-bold text-gray-700 transition-colors"
+                        x-bind:class="{ 'text-school-primary': isDragging }">
+                        <span x-show="!isDragging">Klikněte pro výběr souboru nebo jej přetáhněte sem</span>
+                        <span x-show="isDragging">Pusťte soubor zde</span>
                     </p>
+                    <p class="text-xs text-gray-400 mt-1">Maximální velikost 10 MB.</p>
                 </div>
             </div>
 
-            @if ($maturitaFile)
-                <div class="mt-4 flex items-center justify-between p-3 bg-white/60 border border-gray-200 rounded-xl">
-                    <div class="flex items-center gap-3">
-                        <div class="h-10 w-10 bg-red-50 rounded-lg flex items-center justify-center text-school-primary">
-                            <span class="material-symbols-rounded">description</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-900 truncate max-w-[200px]">
-                                {{ $maturitaFile->filename }}</p>
-                            <p class="text-xs text-gray-500">{{ round($maturitaFile->size / 1024) }} KB</p>
-                        </div>
-                    </div>
+            @error('maturita_file')
+                <p class="text-red-500 text-xs mt-2 ml-1">{{ $message }}</p>
+            @enderror
 
-                    <button form="delete-file-{{ $maturitaFile->id }}"
-                        class="text-gray-400 hover:text-red-500 transition-colors p-2 z-20 relative cursor-pointer">
-                        <span class="material-symbols-rounded">delete</span>
-                    </button>
+            <div class="mt-4 space-y-2" x-show="selectedFiles.length > 0">
+                <template x-for="file in selectedFiles" :key="file.id">
+                    <div
+                        class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <template x-if="file.previewUrl">
+                                <div class="h-12 w-12 rounded-lg overflow-hidden border border-gray-100 flex-shrink-0">
+                                    <img :src="file.previewUrl" class="w-full h-full object-cover">
+                                </div>
+                            </template>
+                            <template x-if="!file.previewUrl">
+                                <div
+                                    class="h-12 w-12 bg-red-50 rounded-lg flex items-center justify-center text-school-primary flex-shrink-0">
+                                    <span class="material-symbols-rounded" x-text="getIcon(file.type)"></span>
+                                </div>
+                            </template>
+
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-gray-900 truncate" x-text="file.name"></p>
+                                <p class="text-xs text-gray-500">Nový soubor &bull; <span x-text="file.size"></span></p>
+                            </div>
+                        </div>
+
+                        <button type="button" @click="removeFile(file.id)"
+                            class="text-gray-400 hover:text-red-500 transition-colors p-2">
+                            <span class="material-symbols-rounded">close</span>
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+            @if ($maturitaFile)
+                <div x-show="selectedFiles.length === 0" class="mt-0">
+                    <div
+                        class="p-3 bg-white border border-gray-200 rounded-xl flex items-center justify-between shadow-sm">
+                        <a href="{{ asset('storage/' . $maturitaFile->disk_path) }}" target="_blank"
+                            class="flex items-center gap-3 overflow-hidden group/file flex-grow">
+                            <div
+                                class="h-12 w-12 bg-green-50 rounded-lg flex items-center justify-center text-green-600 border border-green-100 flex-shrink-0">
+                                <span class="material-symbols-rounded">check_circle</span>
+                            </div>
+                            <div class="min-w-0">
+                                <p
+                                    class="text-sm font-bold text-gray-900 truncate group-hover/file:text-green-700 transition-colors">
+                                    {{ $maturitaFile->filename }}
+                                </p>
+                                <p class="text-xs text-green-600">
+                                    Soubor nahrán &bull; Klikněte pro zobrazení
+                                </p>
+                            </div>
+                        </a>
+
+                        <button form="delete-file-{{ $maturitaFile->id }}"
+                            class="text-gray-400 hover:text-red-500 transition-colors p-2" title="Odstranit soubor">
+                            <span class="material-symbols-rounded">delete</span>
+                        </button>
+                    </div>
                 </div>
             @endif
-        </div>
 
-        <script>
-            function updateFileName(input) {
-                const textElement = document.getElementById('upload-text');
-                if (input.files && input.files[0]) {
-                    textElement.innerText = "Vybráno: " + input.files[0].name;
-                    textElement.classList.add('text-school-primary');
-                }
-            }
-        </script>
+        </div>
 
         <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-white/60 p-4 ring-1 ring-black/5">
             <div class="flex justify-between items-center">

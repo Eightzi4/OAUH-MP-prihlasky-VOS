@@ -308,7 +308,7 @@
                                 <span class="material-symbols-rounded text-gray-400 text-[20px]">alternate_email</span>
                             </div>
                             <input type="email" name="email" required value="{{ Auth::user()->email }}"
-                                class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 pl-10 py-3 transition-all placeholder-gray-400">
+                                class="w-full rounded-xl border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-school-primary focus:border-school-primary bg-white/50 pl-10 py-3 transition-all placeholder-gray-400">
                         </div>
                         @error('email')
                             <p class="text-red-500 text-xs mt-2 ml-1">{{ $message }}</p>
@@ -362,7 +362,7 @@
                             </div>
                             <input type="password" name="password" required minlength="8"
                                 placeholder="Minimálně 8 znaků"
-                                class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 pl-10 py-3 transition-all placeholder-gray-400">
+                                class="w-full rounded-xl border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-school-primary focus:border-school-primary bg-white/50 pl-10 py-3 transition-all placeholder-gray-400">
                         </div>
                         @error('password')
                             <p class="text-red-500 text-xs mt-2 ml-1">{{ $message }}</p>
@@ -378,7 +378,7 @@
                             </div>
                             <input type="password" name="password_confirmation" required minlength="8"
                                 placeholder="Zadejte heslo znovu"
-                                class="w-full rounded-xl border-gray-300 shadow-sm focus:border-school-primary focus:ring-school-primary bg-white/50 pl-10 py-3 transition-all placeholder-gray-400">
+                                class="w-full rounded-xl border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-school-primary focus:border-school-primary bg-white/50 pl-10 py-3 transition-all placeholder-gray-400">
                         </div>
                     </div>
 

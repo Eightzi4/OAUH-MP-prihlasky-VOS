@@ -72,6 +72,9 @@ class ApplicationController extends Controller
 
         if ($isExit) {
             $rules = array_map(fn($rule) => is_string($rule) ? str_replace('required', 'nullable', $rule) : $rule, $rules);
+            $rules['birth_number'] = ['nullable', 'string', new BirthNumber];
+            $rules['phone'] = ['nullable', 'regex:/^(\+420)?\s?[1-9][0-9]{2}\s?[0-9]{3}\s?[0-9]{3}$/'];
+            $rules['zip'] = ['nullable', 'regex:/^\d{3}\s?\d{2}$/'];
         }
 
         $data = $request->validate($rules, [
@@ -80,7 +83,21 @@ class ApplicationController extends Controller
             'zip.regex' => 'PSČ nemá správný formát.',
         ]);
 
-        $application->details()->update($data);
+        $currentVerified = $application->details->verified_fields ?? [];
+        $newVerified = [];
+
+        foreach ($currentVerified as $field) {
+            $niaValue = $application->details->nia_data[$field] ?? null;
+            $inputValue = $data[$field] ?? null;
+
+            if ($niaValue == $inputValue) {
+                $newVerified[] = $field;
+            }
+        }
+
+        $application->details->fill($data);
+        $application->details->verified_fields = $newVerified;
+        $application->details->save();
 
         if ($isExit) return redirect()->route('dashboard');
         return redirect()->route('application.step2', $application->id);
@@ -99,10 +116,13 @@ class ApplicationController extends Controller
         $isExit = $request->has('save_and_exit');
         $isBack = $request->has('go_back');
 
+        $fileInDb = $application->attachments()->where('type', 'maturita')->exists();
+
         $gradYear = $request->input('graduation_year');
         $gradeAvg = $request->input('grade_average');
+        $hasUpload = $request->hasFile('maturita_file');
 
-        $hasGradData = !empty($gradYear) || !empty($gradeAvg) || $request->hasFile('maturita_file');
+        $isFillingGraduation = !empty($gradYear) || !empty($gradeAvg) || $hasUpload || $fileInDb;
 
         $rules = [
             'previous_school' => 'required|string|max:255',
@@ -110,20 +130,37 @@ class ApplicationController extends Controller
             'school_type' => 'required|string|max:50',
             'previous_study_field' => 'required|string|max:255',
             'previous_study_field_code' => 'required|string|max:50',
-
-            'graduation_year' => $hasGradData ? 'required|numeric|digits:4' : 'nullable',
-            'grade_average' => $hasGradData ? 'required|numeric|between:1.00,5.00' : 'nullable',
-            'maturita_file' => ($hasGradData && !$application->attachments()->where('type', 'maturita')->exists()) ? 'required|file|mimes:pdf,jpg,png|max:10240' : 'nullable|file',
         ];
 
-        if ($isExit || $isBack) {
-            $rules = array_map(fn($r) => is_string($r) ? str_replace('required', 'nullable', $r) : $r, $rules);
-            $rules['graduation_year'] = 'nullable|numeric|digits:4';
-            $rules['grade_average'] = 'nullable|numeric';
+        if ($isFillingGraduation && !$isExit && !$isBack) {
+            $rules['graduation_year'] = 'required|numeric|digits:4';
+            $rules['grade_average'] = 'required|numeric|between:1.00,5.00';
+
+            if (!$fileInDb) {
+                $rules['maturita_file'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            } else {
+                $rules['maturita_file'] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240';
+            }
+        } else {
+            $rules['graduation_year'] = 'nullable';
+            $rules['grade_average'] = 'nullable';
             $rules['maturita_file'] = 'nullable';
         }
 
-        $data = $request->validate($rules);
+        if ($isExit || $isBack) {
+            $rules = array_map(fn($r) => is_string($r) ? str_replace('required', 'nullable', $r) : $r, $rules);
+        }
+
+        $messages = [
+            'required' => 'Toto pole je povinné.',
+            'maturita_file.required' => 'Pokud vyplníte rok maturity nebo průměr známek, je nutné nahrát i kopii vysvědčení.',
+            'grade_average.required' => 'Pokud nahrajete vysvědčení nebo vyplníte rok, musíte zadat i průměr známek.',
+            'graduation_year.required' => 'Pokud vyplníte známky nebo nahrajete vysvědčení, musíte uvést rok maturity.',
+            'maturita_file.mimes' => 'Povolené formáty jsou PDF, JPG, JPEG a PNG.',
+            'maturita_file.max' => 'Maximální velikost souboru je 10 MB.',
+        ];
+
+        $data = $request->validate($rules, $messages);
 
         if ($request->hasFile('maturita_file')) {
             $old = $application->attachments()->where('type', 'maturita')->first();

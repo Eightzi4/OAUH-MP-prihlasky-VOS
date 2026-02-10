@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\NiaController;
+use App\Http\Controllers\NiaMockController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Auth;
 
@@ -37,6 +39,10 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/nia/real-login/{applicationId}', [NiaController::class, 'login'])->name('nia.real.login');
+    Route::get('/nia/mock-login/{applicationId}', [NiaMockController::class, 'login'])->name('nia.mock.login');
+    Route::get('/nia/callback', [NiaMockController::class, 'callback'])->name('nia.mock.callback');
 
     Route::post('/profile/email', [ProfileController::class, 'updateEmail'])->name('profile.email');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
