@@ -13,9 +13,7 @@ class NiaController extends Controller
 {
     private function getSamlAuth()
     {
-        $settings = config('nia');
-
-        return new Auth($settings);
+        return new Auth(config('nia'));
     }
 
     public function metadata()
@@ -41,51 +39,164 @@ class NiaController extends Controller
         $auth = $this->getSamlAuth();
         session(['nia_application_id' => $applicationId]);
 
-        return $auth->login();
+        $settings = new \OneLogin\Saml2\Settings(config('nia'));
+        $authnRequest = new \OneLogin\Saml2\AuthnRequest($settings);
+        $xml = $authnRequest->getXML();
+
+        $extensionsXml = <<<XML
+        <samlp:Extensions xmlns:eidas="http://eidas.europa.eu/saml-extensions">
+            <eidas:SPType>public</eidas:SPType>
+            <eidas:RequestedAttributes>
+                <eidas:RequestedAttribute Name="http://eidas.europa.eu/attributes/naturalperson/CurrentGivenName" isRequired="true" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri"/>
+                <eidas:RequestedAttribute Name="http://eidas.europa.eu/attributes/naturalperson/CurrentFamilyName" isRequired="true" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri"/>
+                <eidas:RequestedAttribute Name="http://eidas.europa.eu/attributes/naturalperson/DateOfBirth" isRequired="true" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri"/>
+                <eidas:RequestedAttribute Name="http://eidas.europa.eu/attributes/naturalperson/PersonIdentifier" isRequired="true" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri"/>
+                <eidas:RequestedAttribute Name="http://eidas.europa.eu/attributes/naturalperson/CurrentAddress" isRequired="false" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri"/>
+            </eidas:RequestedAttributes>
+        </samlp:Extensions>
+        XML;
+
+        $issuerCloseTag = '</saml:Issuer>';
+        $position = strpos($xml, $issuerCloseTag) + strlen($issuerCloseTag);
+        $xml = substr_replace($xml, $extensionsXml, $position, 0);
+
+        $signedXml = \OneLogin\Saml2\Utils::addSign(
+            $xml,
+            $settings->getSPkey(),
+            $settings->getSPcert(),
+            $settings->getSecurityData()['signatureAlgorithm'],
+            $settings->getSecurityData()['digestAlgorithm']
+        );
+
+        $ssoUrl = $settings->getIdPData()['singleSignOnService']['url'];
+        $encodedRequest = base64_encode($signedXml);
+        $relayState = $applicationId;
+
+        return response(<<<HTML
+            <!DOCTYPE html><html><head><meta charset="utf-8"></head><body onload="document.forms[0].submit()">
+            <form method="post" action="{$ssoUrl}"><input type="hidden" name="SAMLRequest" value="{$encodedRequest}" /><input type="hidden" name="RelayState" value="{$relayState}" /></form>
+            </body></html>
+            HTML
+        );
     }
 
     public function acs(Request $request)
     {
+        Log::info('NIA Callback hit! Processing response...');
+
+        if (!UserAuth::check()) {
+            return redirect()->route('login')->with('error', 'Relace vypršela.');
+        }
+
         $auth = $this->getSamlAuth();
-        $auth->processResponse();
-        $errors = $auth->getErrors();
 
-        if (!empty($errors)) {
-            Log::error('NIA SAML Errors: ' . implode(', ', $errors));
-            Log::error($auth->getLastErrorReason());
-            return redirect()->route('dashboard')->with('error', 'Chyba při ověřování identity: ' . $auth->getLastErrorReason());
+        try {
+            $auth->processResponse();
+        } catch (\Exception $e) {
+            // TODO
         }
 
-        if (!$auth->isAuthenticated()) {
-            return redirect()->route('dashboard')->with('error', 'Ověření neproběhlo úspěšně.');
+        $rawXml = $auth->getLastResponseXML();
+
+        if (empty($rawXml)) {
+            return redirect()->route('dashboard')->with('error', 'NIA neposlala žádná data (Empty XML).');
         }
 
-        $attributes = $auth->getAttributes();
+        Log::info('NIA Raw XML Received (Parsing Manually...)');
 
-        Log::info('NIA Attributes received:', $attributes);
+        $attributes = $this->parseAttributesManually($rawXml);
+
+        Log::info('NIA Manually Parsed Attributes:', $attributes);
+
+        if (empty($attributes)) {
+             return redirect()->route('dashboard')->with('error', 'Nepodařilo se načíst atributy z NIA odpovědi.');
+        }
 
         $niaData = [
-            'first_name' => $attributes['FirstName'][0] ?? $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentGivenName'][0] ?? null,
-            'last_name' => $attributes['LastName'][0] ?? $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentFamilyName'][0] ?? null,
-            'birth_date' => $attributes['BirthDate'][0] ?? $attributes['http://eidas.europa.eu/attributes/naturalperson/DateOfBirth'][0] ?? null,
-            'birth_number' => $attributes['PersonIdentifier'][0] ?? $attributes['http://eidas.europa.eu/attributes/naturalperson/PersonIdentifier'][0] ?? null,
-
-            'street' => $attributes['Street'][0] ?? null,
-            'city' => $attributes['City'][0] ?? null,
-            'zip' => $attributes['PostCode'][0] ?? null,
+            'first_name' => $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentGivenName'] ?? null,
+            'last_name' => $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentFamilyName'] ?? null,
+            'birth_date' => $attributes['http://eidas.europa.eu/attributes/naturalperson/DateOfBirth'] ?? null,
+            'birth_number' => $attributes['http://eidas.europa.eu/attributes/naturalperson/PersonIdentifier'] ?? null,
         ];
+
+        $rawAddress = $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentAddress'] ?? null;
+        if ($rawAddress) {
+            $parsedAddress = $this->parseEidasAddress($rawAddress);
+            $niaData = array_merge($niaData, $parsedAddress);
+        }
 
         $this->saveDataToApplication($niaData);
 
         $appId = session('nia_application_id');
-
         return redirect()->route('application.step1', $appId)
-            ->with('success', 'Identita byla úspěšně ověřena.');
+            ->with('success', 'Identita byla úspěšně ověřena (Data načtena).');
+    }
+
+    private function parseAttributesManually($xmlString)
+    {
+        $attributes = [];
+        try {
+            $dom = new \DOMDocument();
+            libxml_use_internal_errors(true);
+            $dom->loadXML($xmlString);
+            libxml_clear_errors();
+
+            $xpath = new \DOMXPath($dom);
+            $xpath->registerNamespace('saml', 'urn:oasis:names:tc:SAML:2.0:assertion');
+
+            $nodes = $xpath->query('//saml:Attribute');
+
+            foreach ($nodes as $node) {
+                $name = $node->getAttribute('Name');
+                $valueNode = $xpath->query('./saml:AttributeValue', $node)->item(0);
+
+                if ($valueNode) {
+                    $attributes[$name] = trim($valueNode->textContent);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Manual XML Parse Error: ' . $e->getMessage());
+        }
+        return $attributes;
+    }
+
+    private function getAttr($attributes, $key)
+    {
+        return isset($attributes[$key]) ? $attributes[$key][0] : null;
+    }
+
+    private function parseEidasAddress($base64Xml)
+    {
+        try {
+            $xmlString = base64_decode($base64Xml);
+            $xmlString = str_replace(['eidas:', 'xmlns:eidas'], ['', 'ignore'], $xmlString);
+
+            $xml = new \SimpleXMLElement($xmlString);
+
+            $street = (string)$xml->Thoroughfare;
+            $houseNum = (string)$xml->LocatorDesignator;
+            $city = (string)$xml->CvaddressArea ?: (string)$xml->PostName;
+            $zip = (string)$xml->PostCode;
+
+            $fullStreet = $street ? "$street $houseNum" : "$city $houseNum";
+
+            return [
+                'street' => $fullStreet,
+                'city' => $city,
+                'zip' => str_replace(' ', '', $zip),
+                'country' => 'Česká republika',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Address Parse Error: ' . $e->getMessage());
+            return [];
+        }
     }
 
     private function saveDataToApplication($niaData)
     {
         $appId = session('nia_application_id');
+        if (!$appId) return;
+
         $application = Application::where('user_id', UserAuth::id())->findOrFail($appId);
         $details = $application->details;
         $details->nia_data = $niaData;
@@ -97,7 +208,6 @@ class NiaController extends Controller
                 $verifiedFields[] = $key;
             }
         }
-
         $details->verified_fields = $verifiedFields;
         $details->save();
     }

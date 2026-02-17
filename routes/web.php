@@ -9,6 +9,15 @@ use App\Http\Controllers\NiaMockController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Auth;
 
+Route::get('/link-storage', function () {
+    try {
+        Illuminate\Support\Facades\Artisan::call('storage:link');
+        return 'Storage link has been successfully created.';
+    } catch (Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
+
 Route::get('/', function () {
     return view('home');
 })->name('home');
@@ -28,6 +37,12 @@ Route::middleware('guest')->group(function () {
     Route::get('/auth/verify', [AuthController::class, 'verifyTicket'])->name('auth.verify');
 });
 
+Route::get('/auth/nia', [App\Http\Controllers\NiaController::class, 'metadata'])->name('nia.metadata');
+Route::post('/auth/nia/callback', [App\Http\Controllers\NiaController::class, 'acs'])->name('nia.acs');
+Route::get('/auth/nia/logout', function () {
+    return redirect('/');
+})->name('nia.logout');
+
 Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', function () {
@@ -39,6 +54,8 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/auth/nia/login/{applicationId}', [App\Http\Controllers\NiaController::class, 'login'])->name('nia.real.login');
 
     Route::get('/nia/real-login/{applicationId}', [NiaController::class, 'login'])->name('nia.real.login');
     Route::get('/nia/mock-login/{applicationId}', [NiaMockController::class, 'login'])->name('nia.mock.login');
