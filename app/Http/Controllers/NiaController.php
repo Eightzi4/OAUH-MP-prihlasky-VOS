@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use OneLogin\Saml2\Auth;
-use OneLogin\Saml2\Utils;
 use App\Models\Application;
 use Illuminate\Support\Facades\Auth as UserAuth;
 use Illuminate\Support\Facades\Log;
@@ -72,7 +71,8 @@ class NiaController extends Controller
         $encodedRequest = base64_encode($signedXml);
         $relayState = $applicationId;
 
-        return response(<<<HTML
+        return response(
+            <<<HTML
             <!DOCTYPE html><html><head><meta charset="utf-8"></head><body onload="document.forms[0].submit()">
             <form method="post" action="{$ssoUrl}"><input type="hidden" name="SAMLRequest" value="{$encodedRequest}" /><input type="hidden" name="RelayState" value="{$relayState}" /></form>
             </body></html>
@@ -82,7 +82,7 @@ class NiaController extends Controller
 
     public function acs(Request $request)
     {
-        Log::info('NIA Callback hit! Processing response...');
+        Log::info('NIA Callback hit!');
 
         if (!UserAuth::check()) {
             return redirect()->route('login')->with('error', 'Relace vypršela.');
@@ -92,44 +92,48 @@ class NiaController extends Controller
 
         try {
             $auth->processResponse();
-        } catch (\Exception $e) {
-            // TODO
+        } catch (\Exception $e) { /* TODO */
         }
 
         $rawXml = $auth->getLastResponseXML();
 
         if (empty($rawXml)) {
-            return redirect()->route('dashboard')->with('error', 'NIA neposlala žádná data (Empty XML).');
+            return redirect()->route('dashboard')->with('error', 'NIA neposlala žádná data.');
         }
-
-        Log::info('NIA Raw XML Received (Parsing Manually...)');
 
         $attributes = $this->parseAttributesManually($rawXml);
 
-        Log::info('NIA Manually Parsed Attributes:', $attributes);
+        Log::info('NIA Parsed Attributes:', $attributes);
 
         if (empty($attributes)) {
-             return redirect()->route('dashboard')->with('error', 'Nepodařilo se načíst atributy z NIA odpovědi.');
+            return redirect()->route('dashboard')->with('error', 'Nepodařilo se načíst atributy z NIA odpovědi.');
         }
 
         $niaData = [
             'first_name' => $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentGivenName'] ?? null,
             'last_name' => $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentFamilyName'] ?? null,
             'birth_date' => $attributes['http://eidas.europa.eu/attributes/naturalperson/DateOfBirth'] ?? null,
-            'birth_number' => $attributes['http://eidas.europa.eu/attributes/naturalperson/PersonIdentifier'] ?? null,
         ];
 
         $rawAddress = $attributes['http://eidas.europa.eu/attributes/naturalperson/CurrentAddress'] ?? null;
+
         if ($rawAddress) {
+            Log::info('NIA Address Found (Base64): ' . $rawAddress);
             $parsedAddress = $this->parseEidasAddress($rawAddress);
-            $niaData = array_merge($niaData, $parsedAddress);
+            Log::info('NIA Address Parsed Result:', $parsedAddress);
+
+            if (!empty($parsedAddress)) {
+                $niaData = array_merge($niaData, $parsedAddress);
+            }
+        } else {
+            Log::warning('NIA Address Attribute is missing or empty.');
         }
 
         $this->saveDataToApplication($niaData);
 
         $appId = session('nia_application_id');
         return redirect()->route('application.step1', $appId)
-            ->with('success', 'Identita byla úspěšně ověřena (Data načtena).');
+            ->with('success', 'Identita byla úspěšně ověřena.');
     }
 
     private function parseAttributesManually($xmlString)
@@ -147,11 +151,14 @@ class NiaController extends Controller
             $nodes = $xpath->query('//saml:Attribute');
 
             foreach ($nodes as $node) {
-                $name = $node->getAttribute('Name');
-                $valueNode = $xpath->query('./saml:AttributeValue', $node)->item(0);
+                if ($node instanceof \DOMElement) {
+                    $name = $node->getAttribute('Name');
 
-                if ($valueNode) {
-                    $attributes[$name] = trim($valueNode->textContent);
+                    $valueNode = $xpath->query('./saml:AttributeValue', $node)->item(0);
+
+                    if ($valueNode) {
+                        $attributes[$name] = trim($valueNode->textContent);
+                    }
                 }
             }
         } catch (\Exception $e) {
@@ -169,21 +176,30 @@ class NiaController extends Controller
     {
         try {
             $xmlString = base64_decode($base64Xml);
+
+            Log::info('NIA Address Decoded XML: ' . $xmlString);
+
             $xmlString = str_replace(['eidas:', 'xmlns:eidas'], ['', 'ignore'], $xmlString);
+
+            $xmlString = "<root>" . $xmlString . "</root>";
 
             $xml = new \SimpleXMLElement($xmlString);
 
-            $street = (string)$xml->Thoroughfare;
-            $houseNum = (string)$xml->LocatorDesignator;
-            $city = (string)$xml->CvaddressArea ?: (string)$xml->PostName;
-            $zip = (string)$xml->PostCode;
+            $houseNum = (string)($xml->LocatorDesignator ?? '');
+            $streetName = (string)($xml->Thoroughfare ?? '');
+            $city = (string)($xml->CvaddressArea ?? $xml->PostName ?? '');
+            $zip = (string)($xml->PostCode ?? '');
 
-            $fullStreet = $street ? "$street $houseNum" : "$city $houseNum";
+            if (empty($city) && isset($xml->PostName)) {
+                $city = (string)$xml->PostName;
+            }
+
+            $fullStreet = empty($streetName) ? "$city $houseNum" : "$streetName $houseNum";
 
             return [
-                'street' => $fullStreet,
-                'city' => $city,
-                'zip' => str_replace(' ', '', $zip),
+                'street' => trim($fullStreet),
+                'city' => trim($city),
+                'zip' => str_replace(' ', '', trim($zip)),
                 'country' => 'Česká republika',
             ];
         } catch (\Exception $e) {
@@ -198,17 +214,17 @@ class NiaController extends Controller
         if (!$appId) return;
 
         $application = Application::where('user_id', UserAuth::id())->findOrFail($appId);
-        $details = $application->details;
-        $details->nia_data = $niaData;
+
         $verifiedFields = [];
 
         foreach ($niaData as $key => $value) {
             if (!empty($value)) {
-                $details->$key = $value;
+                $application->$key = $value;
                 $verifiedFields[] = $key;
             }
         }
-        $details->verified_fields = $verifiedFields;
-        $details->save();
+
+        $application->verified_fields = $verifiedFields;
+        $application->save();
     }
 }

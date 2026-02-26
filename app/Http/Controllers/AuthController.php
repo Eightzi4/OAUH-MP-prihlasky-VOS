@@ -8,14 +8,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\LoginLinkMail;
 
 class AuthController extends Controller
 {
-    public function showLogin() {
+    public function showLogin()
+    {
         return view('auth.login');
     }
 
-    public function handleEmail(Request $request) {
+    public function handleEmail(Request $request)
+    {
         $request->validate(['email' => 'required|email']);
         $email = $request->input('email');
 
@@ -36,19 +40,29 @@ class AuthController extends Controller
         return view('auth.check-email', ['email' => $email]);
     }
 
-    private function sendLoginTicket(User $user) {
+    public function sendLoginTicket(User $user)
+    {
         $token = Str::random(32);
-        LoginTicket::create([
+
+        $ticket = LoginTicket::create([
             'user_id' => $user->id,
             'token' => $token,
             'expires_at' => now()->addMinutes(30),
         ]);
 
         $link = route('auth.verify', ['loginTicket' => $token]);
-        Log::info("LOGIN LINK FOR {$user->email}: {$link}");
+
+        try {
+            Mail::to($user->email)->send(new LoginLinkMail($link, $ticket->expires_at));
+        } catch (\Exception $e) {
+            Log::error('Email sending failed: ' . $e->getMessage());
+        }
+
+        Log::info("Login ticket created for user {$user->email}, link: {$link}");
     }
 
-    public function sendLink(Request $request) {
+    public function sendLink(Request $request)
+    {
         $request->validate(['email' => 'required|email']);
         $user = User::where('email', $request->email)->firstOrFail();
 
@@ -56,7 +70,8 @@ class AuthController extends Controller
         return view('auth.check-email', ['email' => $user->email]);
     }
 
-    public function loginWithPassword(Request $request) {
+    public function loginWithPassword(Request $request)
+    {
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required'
@@ -72,15 +87,16 @@ class AuthController extends Controller
         ]);
     }
 
-    public function verifyTicket(Request $request) {
+    public function verifyTicket(Request $request)
+    {
         $token = $request->query('loginTicket');
 
         if (!$token) return redirect()->route('login')->with('error', 'Chybějící přihlašovací token.');
 
         $ticket = LoginTicket::where('token', $token)
-                    ->where('expires_at', '>', now())
-                    ->whereNull('used_at')
-                    ->first();
+            ->where('expires_at', '>', now())
+            ->whereNull('used_at')
+            ->first();
 
         if (!$ticket) return redirect()->route('login')->with('error', 'Neplatný nebo expirovaný odkaz.');
 
@@ -93,7 +109,8 @@ class AuthController extends Controller
         return redirect()->route('dashboard');
     }
 
-    public function logout(Request $request) {
+    public function logout(Request $request)
+    {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

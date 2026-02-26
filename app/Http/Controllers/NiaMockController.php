@@ -43,26 +43,24 @@ class NiaMockController extends Controller
             'city' => $samlAttributes['ParsedAddress_City'],
             'zip' => $samlAttributes['ParsedAddress_Zip'],
             'citizenship' => 'Česká republika',
+            'country' => 'Česká republika',
 
             'email' => $this->getAttr($samlAttributes, 'http://www.stork.gov.eu/1.0/eMail'),
         ];
 
         $appId = session('nia_application_id');
         $application = Application::where('user_id', Auth::id())->findOrFail($appId);
-        $details = $application->details;
-
-        $details->nia_data = $niaData;
 
         $verifiedFields = [];
         foreach ($niaData as $key => $value) {
             if (!empty($value)) {
-                $details->$key = $value;
+                $application->$key = $value;
                 $verifiedFields[] = $key;
             }
         }
 
-        $details->verified_fields = $verifiedFields;
-        $details->save();
+        $application->verified_fields = $verifiedFields;
+        $application->save();
 
         return redirect()->route('application.step1', $application->id)
             ->with('success', 'Identita byla úspěšně ověřena (Simulace NIA dle XML).');

@@ -22,3 +22,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+storage/certs/nia.crt
+storage/certs/saml.crt
+storage/certs/saml.key

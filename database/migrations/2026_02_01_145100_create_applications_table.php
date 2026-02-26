@@ -12,15 +12,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('study_program_id')->constrained('study_programs');
+
             $table->string('status')->default('draft');
             $table->string('application_number')->nullable();
             $table->timestamp('submitted_at')->nullable();
-            $table->timestamps();
-        });
-
-        Schema::create('applicant_details', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('application_id')->constrained('applications')->cascadeOnDelete();
 
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
@@ -49,7 +44,6 @@ return new class extends Migration
             $table->text('specific_needs')->nullable();
             $table->text('note')->nullable();
 
-            $table->json('nia_data')->nullable();
             $table->json('verified_fields')->nullable();
 
             $table->timestamps();
@@ -70,7 +64,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('application_attachments');
-        Schema::dropIfExists('applicant_details');
         Schema::dropIfExists('applications');
     }
 };

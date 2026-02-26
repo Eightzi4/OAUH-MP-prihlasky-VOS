@@ -51,7 +51,6 @@
                     </div>
                     <div class="absolute inset-0 rounded-xl border border-white/60 border-b-2 border-b-gray-200/50">
                     </div>
-
                     <span class="relative z-10 text-gray-600 font-bold text-xs flex items-center gap-2">
                         <span
                             class="material-symbols-rounded text-[18px] text-gray-500 group-hover:text-school-primary transition-colors duration-300">save</span>
@@ -70,45 +69,95 @@
 
     <main class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
 
-        <div
+        @php
+            $currentStep = match (true) {
+                Request::routeIs('application.step1') => 1,
+                Request::routeIs('application.step2') => 2,
+                Request::routeIs('application.step3') => 3,
+                Request::routeIs('application.step4') => 4,
+                default => 1,
+            };
+        @endphp
+
+        <div x-data="{
+            step1Complete: {{ $application->isStep1Complete() ? 'true' : 'false' }},
+            step2Complete: {{ $application->isStep2Complete() ? 'true' : 'false' }},
+            init() {
+                window.addEventListener('step-complete', e => {
+                    if (e.detail.step === 1) this.step1Complete = e.detail.complete;
+                    if (e.detail.step === 2) this.step2Complete = e.detail.complete;
+                });
+            }
+        }"
             class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-white/60 p-4 mb-10 ring-1 ring-black/5">
             <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-6 text-sm font-medium">
 
-                <a href="{{ route('application.step1', $application->id) }}"
-                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors {{ Request::routeIs('application.step1') ? 'bg-red-50 text-school-primary' : 'text-gray-600 hover:bg-gray-100' }}">
+                @php $s1Active = ($currentStep === 1); @endphp
+                <button type="button" onclick="goToStep('{{ route('application.step1', $application->id) }}')"
+                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors cursor-pointer border-none bg-transparent
+                        {{ $s1Active ? 'bg-red-50 text-school-primary' : 'text-gray-600 hover:bg-gray-100' }}">
                     <span
-                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 {{ Request::routeIs('application.step1') ? 'border-school-primary bg-white' : 'border-gray-300' }} text-sm font-bold">1</span>
+                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 text-sm font-bold
+                        {{ $s1Active ? 'border-school-primary bg-white' : 'border-gray-300' }}">1</span>
                     <span>Osobní údaje</span>
-                </a>
+                </button>
 
                 <div class="hidden sm:block w-12 h-px bg-gray-200"></div>
 
-                @php $canStep2 = !empty($application->details->first_name); @endphp
-                <a href="{{ $canStep2 ? route('application.step2', $application->id) : '#' }}"
-                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors {{ Request::routeIs('application.step2') ? 'bg-red-50 text-school-primary' : ($canStep2 ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed') }}">
+                @php $s2Active = ($currentStep === 2); @endphp
+                <button type="button"
+                    @if ($currentStep > 2) onclick="goToStep('{{ route('application.step2', $application->id) }}')"
+                    @else
+                        @click="step1Complete && goToStep('{{ route('application.step2', $application->id) }}')"
+                        :disabled="!step1Complete" @endif
+                    :class="{{ $currentStep > 2 ? 'true' : 'step1Complete' }}
+                        ?
+                        'text-gray-600 hover:bg-gray-100 cursor-pointer' :
+                        'text-gray-300 cursor-not-allowed opacity-50'"
+                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors border-none bg-transparent
+                        {{ $s2Active ? 'bg-red-50 text-school-primary' : '' }}">
                     <span
-                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 {{ Request::routeIs('application.step2') ? 'border-school-primary bg-white' : 'border-gray-200' }} text-sm font-bold">2</span>
+                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 text-sm font-bold
+                        {{ $s2Active ? 'border-school-primary bg-white' : 'border-gray-200' }}">2</span>
                     <span>Předchozí vzdělání</span>
-                </a>
+                </button>
 
                 <div class="hidden sm:block w-12 h-px bg-gray-200"></div>
 
-                @php $canStep3 = !empty($application->details->previous_school); @endphp
-                <a href="{{ $canStep3 ? route('application.step3', $application->id) : '#' }}"
-                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors {{ Request::routeIs('application.step3') ? 'bg-red-50 text-school-primary' : ($canStep3 ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed') }}">
+                @php $s3Active = ($currentStep === 3); @endphp
+                <button type="button"
+                    @if ($currentStep > 3) onclick="goToStep('{{ route('application.step3', $application->id) }}')"
+                    @else
+                        @click="(step1Complete && step2Complete) && goToStep('{{ route('application.step3', $application->id) }}')"
+                        :disabled="!step1Complete || !step2Complete" @endif
+                    :class="{{ $currentStep > 3 ? 'true' : '(step1Complete && step2Complete)' }}
+                        ?
+                        'text-gray-600 hover:bg-gray-100 cursor-pointer' :
+                        'text-gray-300 cursor-not-allowed opacity-50'"
+                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors border-none bg-transparent
+                        {{ $s3Active ? 'bg-red-50 text-school-primary' : '' }}">
                     <span
-                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 {{ Request::routeIs('application.step3') ? 'border-school-primary bg-white' : 'border-gray-200' }} text-sm font-bold">3</span>
+                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 text-sm font-bold
+                        {{ $s3Active ? 'border-school-primary bg-white' : 'border-gray-200' }}">3</span>
                     <span>Přílohy</span>
-                </a>
+                </button>
 
                 <div class="hidden sm:block w-12 h-px bg-gray-200"></div>
 
-                <a href="{{ $canStep3 ? route('application.step4', $application->id) : '#' }}"
-                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors {{ Request::routeIs('application.step4') ? 'bg-red-50 text-school-primary' : ($canStep3 ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed') }}">
+                @php $s4Active = ($currentStep === 4); @endphp
+                <button type="button"
+                    @click="(step1Complete && step2Complete) && goToStep('{{ route('application.step4', $application->id) }}')"
+                    :disabled="!step1Complete || !step2Complete"
+                    :class="(step1Complete && step2Complete) ?
+                    'text-gray-600 hover:bg-gray-100 cursor-pointer' :
+                    'text-gray-300 cursor-not-allowed opacity-50'"
+                    class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors border-none bg-transparent
+                        {{ $s4Active ? 'bg-red-50 text-school-primary' : '' }}">
                     <span
-                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 {{ Request::routeIs('application.step4') ? 'border-school-primary bg-white' : 'border-gray-200' }} text-sm font-bold">4</span>
+                        class="h-8 w-8 rounded-full flex items-center justify-center border-2 text-sm font-bold
+                        {{ $s4Active ? 'border-school-primary bg-white' : 'border-gray-200' }}">4</span>
                     <span>Souhrn</span>
-                </a>
+                </button>
 
             </div>
         </div>
@@ -166,22 +215,6 @@
         </div>
     </main>
 
-    <script>
-        function saveAndExit() {
-            const form = document.querySelector('form');
-            if (form) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'save_and_exit';
-                input.value = '1';
-                form.appendChild(input);
-
-                form.submit();
-            } else {
-                window.location.href = "{{ route('dashboard') }}";
-            }
-        }
-    </script>
 </body>
 
 </html>

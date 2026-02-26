@@ -5,6 +5,8 @@
     --color-school-hover: #b91c1c;
     --color-school-dark: #1d1d1b;
     --color-school-light: #f9fafb;
+
+    --color-school-warning: #d97706;
 }
 
 @utility btn-primary {
