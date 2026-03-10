@@ -93,7 +93,7 @@
             <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-6 text-sm font-medium">
 
                 @php $s1Active = ($currentStep === 1); @endphp
-                <button type="button" onclick="goToStep('{{ route('application.step1', $application->id) }}')"
+                <button type="button" onclick="navNavigate('{{ route('application.step1', $application->id) }}')"
                     class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors cursor-pointer border-none bg-transparent
                         {{ $s1Active ? 'bg-red-50 text-school-primary' : 'text-gray-600 hover:bg-gray-100' }}">
                     <span
@@ -106,9 +106,9 @@
 
                 @php $s2Active = ($currentStep === 2); @endphp
                 <button type="button"
-                    @if ($currentStep > 2) onclick="goToStep('{{ route('application.step2', $application->id) }}')"
+                    @if ($currentStep > 2) onclick="navNavigate('{{ route('application.step2', $application->id) }}')"
                     @else
-                        @click="step1Complete && goToStep('{{ route('application.step2', $application->id) }}')"
+                        @click="step1Complete && navNavigate('{{ route('application.step2', $application->id) }}')"
                         :disabled="!step1Complete" @endif
                     :class="{{ $currentStep > 2 ? 'true' : 'step1Complete' }}
                         ?
@@ -126,9 +126,9 @@
 
                 @php $s3Active = ($currentStep === 3); @endphp
                 <button type="button"
-                    @if ($currentStep > 3) onclick="goToStep('{{ route('application.step3', $application->id) }}')"
+                    @if ($currentStep > 3) onclick="navNavigate('{{ route('application.step3', $application->id) }}')"
                     @else
-                        @click="(step1Complete && step2Complete) && goToStep('{{ route('application.step3', $application->id) }}')"
+                        @click="(step1Complete && step2Complete) && navNavigate('{{ route('application.step3', $application->id) }}')"
                         :disabled="!step1Complete || !step2Complete" @endif
                     :class="{{ $currentStep > 3 ? 'true' : '(step1Complete && step2Complete)' }}
                         ?
@@ -146,7 +146,7 @@
 
                 @php $s4Active = ($currentStep === 4); @endphp
                 <button type="button"
-                    @click="(step1Complete && step2Complete) && goToStep('{{ route('application.step4', $application->id) }}')"
+                    @click="(step1Complete && step2Complete) && navNavigate('{{ route('application.step4', $application->id) }}')"
                     :disabled="!step1Complete || !step2Complete"
                     :class="(step1Complete && step2Complete) ?
                     'text-gray-600 hover:bg-gray-100 cursor-pointer' :
@@ -212,6 +212,7 @@
                         012</a>
                 </div>
             </div>
+
         </div>
     </main>
 

@@ -141,37 +141,75 @@ document.addEventListener('alpine:init', () => {
 
         serverMessages: config.serverMessages || {},
 
+        conditionalGroups: config.conditionalGroups || [],
+
         init() {
+            window._activeStepValidator = this;
+
             this.serverErrorFields.forEach(name => {
                 this.errors[name] = this.serverMessages[name] || 'Toto pole je neplatné.';
             });
+
+            const attachListeners = (el, name, onChangeFn) => {
+                const isBinary = el.tagName === 'SELECT'
+                    || el.type === 'date'
+                    || el.type === 'checkbox'
+                    || el.type === 'file';
+
+                if (isBinary) {
+                    el.addEventListener('change', () => {
+                        this.touched[name] = true;
+                        onChangeFn();
+                    });
+                } else {
+                    el.addEventListener('input', () => {
+                        this.touched[name] = true;
+                        onChangeFn();
+                    });
+                    el.addEventListener('blur', () => {
+                        this.touched[name] = true;
+                        onChangeFn();
+                    });
+                }
+            };
 
             this.fields.forEach(field => {
                 this.$nextTick(() => {
                     const el = document.querySelector(`[name="${field.name}"]`);
                     if (!el) return;
+                    attachListeners(el, field.name, () => {
+                        this.validateField(field);
+                        this.dispatchCompletionEvent();
+                    });
+                });
+            });
 
-                    const isBinary = el.tagName === 'SELECT'
-                        || el.type === 'date'
-                        || el.type === 'checkbox';
+            this.conditionalGroups.forEach(group => {
+                this.$nextTick(() => {
+                    const revalidateGroup = () => {
+                        this.validateConditionalGroup(group);
+                        this.dispatchCompletionEvent();
+                    };
 
-                    if (isBinary) {
-                        el.addEventListener('change', () => {
-                            this.touched[field.name] = true;
-                            this.validateField(field);
-                            this.dispatchCompletionEvent();
-                        });
-                    } else {
-                        el.addEventListener('input', () => {
-                            this.touched[field.name] = true;
-                            this.validateField(field);
-                            this.dispatchCompletionEvent();
-                        });
-                        el.addEventListener('blur', () => {
-                            this.touched[field.name] = true;
-                            this.validateField(field);
-                            this.dispatchCompletionEvent();
-                        });
+                    group.fields.forEach(field => {
+                        const el = document.querySelector(`[name="${field.name}"]`);
+                        if (!el) return;
+                        attachListeners(el, field.name, revalidateGroup);
+                    });
+
+                    if (group.fileField) {
+                        const fileEl = document.querySelector(`[name="${group.fileField}"]`);
+                        if (fileEl) {
+                            attachListeners(fileEl, group.fileField, revalidateGroup);
+                        }
+                    }
+
+                    const anyServerError = group.fields.some(f =>
+                        this.serverErrorFields.includes(f.name)
+                    ) || (group.fileField && this.serverErrorFields.includes(group.fileField));
+
+                    if (anyServerError || this.conditionalGroupIsActive(group)) {
+                        this.validateConditionalGroup(group);
                     }
                 });
             });
@@ -183,7 +221,68 @@ document.addEventListener('alpine:init', () => {
             const el = document.querySelector(`[name="${name}"]`);
             if (!el) return '';
             if (el.type === 'checkbox') return el.checked ? 'on' : '';
+            if (el.type === 'file') return el.files && el.files.length > 0 ? 'present' : '';
             return el.value ?? '';
+        },
+
+        conditionalGroupIsActive(group) {
+            if (group.filePresent) return true;
+            if (group.fileField) {
+                const fileEl = document.querySelector(`[name="${group.fileField}"]`);
+                if (fileEl && fileEl.files && fileEl.files.length > 0) return true;
+            }
+            return group.fields.some(f => {
+                const v = this.getFieldValue(f.name);
+                return v && v.trim() !== '';
+            });
+        },
+
+        validateConditionalGroup(group) {
+            const active = this.conditionalGroupIsActive(group);
+
+            if (!active) {
+                group.fields.forEach(f => { delete this.errors[f.name]; });
+                if (group.fileField) delete this.errors[group.fileField];
+                return true;
+            }
+
+            let valid = true;
+            group.fields.forEach(field => {
+                const value = this.getFieldValue(field.name);
+                const trimmed = value ? value.trim() : '';
+
+                if (!trimmed) {
+                    this.errors[field.name] = field.message || 'Toto pole je povinné.';
+                    valid = false;
+                } else {
+                    const formatFn = FORMAT_VALIDATORS[field.name];
+                    if (formatFn) {
+                        const err = formatFn(trimmed);
+                        if (err) {
+                            this.errors[field.name] = err;
+                            valid = false;
+                        } else {
+                            delete this.errors[field.name];
+                        }
+                    } else {
+                        delete this.errors[field.name];
+                    }
+                }
+            });
+
+            if (group.fileField) {
+                const fileEl = document.querySelector(`[name="${group.fileField}"]`);
+                const hasNewFile = fileEl && fileEl.files && fileEl.files.length > 0;
+                if (!hasNewFile && !group.filePresent) {
+                    this.errors[group.fileField] = group.fileMessage
+                        || 'Pokud vyplňujete rok maturity nebo průměr, je nutné nahrát kopii vysvědčení.';
+                    valid = false;
+                } else {
+                    delete this.errors[group.fileField];
+                }
+            }
+
+            return valid;
         },
 
         validateField(field) {
@@ -214,17 +313,48 @@ document.addEventListener('alpine:init', () => {
             this.fields.forEach(field => {
                 if (!this.validateField(field)) valid = false;
             });
+
+            this.conditionalGroups.forEach(group => {
+                group.fields.forEach(f => { this.touched[f.name] = true; });
+                if (group.fileField) this.touched[group.fileField] = true;
+                if (!this.validateConditionalGroup(group)) valid = false;
+            });
+
             return valid;
         },
 
         isComplete() {
-            return this.fields.every(field => {
+            const coreOk = this.fields.every(field => {
                 const value = this.getFieldValue(field.name);
                 if (!value || !value.trim()) return false;
                 const formatFn = FORMAT_VALIDATORS[field.name];
                 if (formatFn && formatFn(value.trim())) return false;
                 return true;
             });
+            if (!coreOk) return false;
+
+            const groupsOk = this.conditionalGroups.every(group => {
+                if (!this.conditionalGroupIsActive(group)) return true; // inactive = fine
+
+                const textOk = group.fields.every(f => {
+                    const value = this.getFieldValue(f.name);
+                    if (!value || !value.trim()) return false;
+                    const formatFn = FORMAT_VALIDATORS[f.name];
+                    if (formatFn && formatFn(value.trim())) return false;
+                    return true;
+                });
+                if (!textOk) return false;
+
+                if (group.fileField) {
+                    const fileEl = document.querySelector(`[name="${group.fileField}"]`);
+                    const hasNewFile = fileEl && fileEl.files && fileEl.files.length > 0;
+                    if (!hasNewFile && !group.filePresent) return false;
+                }
+
+                return true;
+            });
+
+            return groupsOk;
         },
 
         dispatchCompletionEvent() {
@@ -246,19 +376,30 @@ document.addEventListener('alpine:init', () => {
         },
 
         trySubmit() {
+            this.tryNavigate(null);
+        },
+
+        tryNavigate(url) {
             if (this.validateAll()) {
                 this.dispatchCompletionEvent();
-                document.getElementById('main-form').submit();
+                const form = document.getElementById('main-form');
+                if (url) {
+                    let input = form.querySelector('input[name="switch_to"]');
+                    if (!input) {
+                        input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'switch_to';
+                        form.appendChild(input);
+                    }
+                    input.value = url;
+                }
+                form.submit();
             } else {
                 this.$nextTick(() => {
                     const first = document.querySelector('[data-field-error]');
                     first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 });
             }
-        },
-
-        goBack(url) {
-            window.location.href = url;
         },
     }));
 });
@@ -280,10 +421,33 @@ window.submitFormWithAction = (destination) => {
     }
 };
 
-window.saveAndExit = () => window.submitFormWithAction('dashboard');
+window.saveAndExit = () => {
+    const form = document.getElementById('main-form');
+    if (form) {
+        let input = form.querySelector('input[name="save_and_exit"]');
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'save_and_exit';
+            form.appendChild(input);
+        }
+        input.value = '1';
+        form.submit();
+    } else {
+        window.location.href = '/dashboard';
+    }
+};
 
 window.switchStep = (url) => window.submitFormWithAction(url);
 
 window.goToStep = (url) => { window.location.href = url; };
+
+window.navNavigate = (url) => {
+    if (window._activeStepValidator) {
+        window._activeStepValidator.tryNavigate(url);
+    } else {
+        window.submitFormWithAction(url);
+    }
+};
 
 Alpine.start();

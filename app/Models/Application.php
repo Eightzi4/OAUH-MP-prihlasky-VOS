@@ -24,6 +24,11 @@ class Application extends Model
         return $this->hasMany(ApplicationAttachment::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function isStep1Complete(): bool
     {
         return !empty($this->first_name) &&

@@ -8,6 +8,7 @@ use App\Http\Controllers\NiaController;
 use App\Http\Controllers\NiaMockController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\AdminController;
 
 Route::get('/link-storage', function () {
     try {
@@ -79,4 +80,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/application/{id}/submit', [ApplicationController::class, 'submit'])->name('application.submit');
 
     Route::delete('/application/{id}/attachment/{attachmentId}', [ApplicationController::class, 'deleteAttachment'])->name('application.deleteAttachment');
+});
+
+Route::prefix('admin')->group(function () {
+    Route::get('/login', [AdminController::class, 'showLogin'])->name('admin.login');
+    Route::post('/login', [AdminController::class, 'login'])->name('admin.login.post');
+
+    Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/application/{id}', [App\Http\Controllers\AdminController::class, 'showApplication'])->name('admin.application.show');
 });
